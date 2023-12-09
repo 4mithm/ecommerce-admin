@@ -6,13 +6,11 @@ import { ReactSortable } from "react-sortablejs";
 
 export default function ProductForm({
 	_id,
-	title: existingSpecies,
+	species: existingSpecies,
 	description: existingDescription,
 	price: existingPrice,
 	images: existingImages,
-	length: existingLength,
-	width: existingWidth,
-	thickness: existingThickness,
+	dimensions:existingDimensions,
 	cut: existingCut,
 	minLength: existingMinLength,
 	maxLength: existingMaxLength,
@@ -22,6 +20,7 @@ export default function ProductForm({
 	maxThickness: existingMaxThickness,
 	measurement: existingMeasurement,
 	use: existingUse,
+	type: existingType,
 }) {
 	const [species, setSpecies] = useState(existingSpecies || "");
 	const [description, setDescription] = useState(existingDescription || "");
@@ -34,23 +33,39 @@ export default function ProductForm({
 	const router = useRouter();
 
 	// ------------------------------------------------------------------
-	const [length, setLength] = useState(existingLength || "");
-	const [width, setWidth] = useState(existingWidth || "");
-	const [thickness, setThickness] = useState(existingThickness || "");
+	const [length, setLength] = useState("");
+	const [width, setWidth] = useState("");
+	const [thickness, setThickness] = useState("");
+	const [dimensions, setDimensions] = useState(existingDimensions||[]);
+
+	
 	// -------------------------------------------------------------------
-	const [maxLength, setMaxLength] = useState(existingMaxLength || 0);
-	const [minLength, setMinLength] = useState(existingMinLength || 0);
-	const [minWidth, setMinWidth] = useState(existingMinWidth || 0);
-	const [maxWidth, setMaxWidth] = useState(existingMaxWidth || 0);
-	const [maxThickness, setMaxThickness] = useState(existingMaxThickness || 0);
-	const [minThickness, setMinThickness] = useState(existingMinThickness || 0);
-	const [measurement, setMeasurement] = useState(existingMeasurement || 0);
+	const [maxLength, setMaxLength] = useState(existingMaxLength || "");
+	const [minLength, setMinLength] = useState(existingMinLength || "");
+	const [minWidth, setMinWidth] = useState(existingMinWidth || "");
+	const [maxWidth, setMaxWidth] = useState(existingMaxWidth || "");
+	const [maxThickness, setMaxThickness] = useState(existingMaxThickness || "");
+	const [minThickness, setMinThickness] = useState(existingMinThickness || "");
+	const [measurement, setMeasurement] = useState(existingMeasurement || "ft");
 	const [use, setUse] = useState(existingUse || "");
+	const [selectSpecies, setSelectSpecies] = useState([]);
+	const [selectUses, setSelectUses] = useState([]);
+	const [type, setWoodType] = useState(existingType || "");
+
+	useEffect(() => {
+		axios.get("/api/species").then((result) => {
+			setSelectSpecies(result.data);
+		});
+		axios.get("/api/uses").then((result) => {
+			setSelectUses(result.data);
+		});
+	}, []);
 
 	async function saveProduct(ev) {
 		ev.preventDefault();
 		let data = {
 			species,
+			type,
 			description,
 			price,
 			images,
@@ -58,7 +73,7 @@ export default function ProductForm({
 			measurement,
 			use,
 		};
-		if (cut == "Preplanned") data = { ...data, length, width, thickness };
+		if (cut == "Preplanned") data = { ...data, dimensions };
 		else
 			data = {
 				...data,
@@ -75,11 +90,10 @@ export default function ProductForm({
 			await axios.put("/api/products", { ...data, _id });
 		} else {
 			//create
-			console.log(data);
+
 			await axios.post("/api/products", data);
 		}
 		setGoToProducts(true);
-		console.log("Success");
 	}
 	if (goToProducts) {
 		router.push("/products");
@@ -102,24 +116,60 @@ export default function ProductForm({
 	function updateImagesOrder(images) {
 		setImages(images);
 	}
-	function setProductProp(propName, value) {
-		setProductProperties((prev) => {
-			const newProductProps = { ...prev };
-			newProductProps[propName] = value;
-			return newProductProps;
+
+	// ---------------------------------------------------------------------------------------------------------------------------------------
+	function setSpeciesAndType(name) {
+		console.log(name);
+		selectSpecies.find((sp) => {
+			console.log(sp.species);
+			if (sp.name === name) {
+				console.log(sp);
+				setSpecies(sp.name);
+				setWoodType(sp.type);
+			}
 		});
 	}
+
 	// ---------------------------------------------------------------------------------------------------------------
+
+		function addDimension(e, length, width, thickness) {
+			e.preventDefault();
+			const a=parseFloat(length)
+			const b=parseFloat(width)
+			const c=parseFloat(thickness)
+			if (!dimensions.length) setDimensions([[a,b,c]]);
+			else setDimensions([...dimensions, [a,b,c]]);
+			console.log(dimensions);
+			setLength("");
+			setWidth("");
+			setThickness("");
+		}
+
+		function removeDimension(e, index) {
+			e.preventDefault();
+			const newDimensions = [...dimensions];
+			newDimensions.splice(index, 1);
+			setDimensions(newDimensions);
+		}
+
 	// ------------------------------------------------------------------------------------------------------------------------
 	return (
-		<form onSubmit={saveProduct}>
+		<form>
 			<label>Species</label>
-			<input
-				type="text"
-				placeholder="species"
+			<select
 				value={species}
-				onChange={(ev) => setSpecies(ev.target.value)}
-			/>
+				onChange={(e) => setSpeciesAndType(e.target.value)}
+			>
+				<option value="" disabled selected hidden></option>
+				{selectSpecies.length > 0 &&
+					selectSpecies.map((c) => (
+						<option key={c._id} value={c.name}>
+							{c.name}
+						</option>
+					))}
+			</select>
+			<label>Type </label>
+			<input value={type} disabled />
 
 			<label>Photos</label>
 			<div className="mb-2 flex flex-wrap gap-1">
@@ -169,12 +219,16 @@ export default function ProductForm({
 				onChange={(ev) => setDescription(ev.target.value)}
 			/>
 			<label>Use</label>
-			<input
-				type="text"
-				placeholder="use"
-				value={use}
-				onChange={(ev) => setUse(ev.target.value)}
-			/>
+			<select value={use} onChange={(ev) => setUse(ev.target.value)}>
+				<option value="" disabled selected hidden></option>
+
+				{selectUses.length > 0 &&
+					selectUses.map((c) => (
+						<option key={c._id} value={c.name}>
+							{c.name}
+						</option>
+					))}
+			</select>
 
 			<label>Price</label>
 			<input
@@ -238,33 +292,68 @@ export default function ProductForm({
 			{!cut ? (
 				<></>
 			) : cut == "Preplanned" ? (
-				<>
-					<label>Length</label>
-					<input
-						type="text"
-						placeholder="length,separated by commas"
-						value={length}
-						onChange={(ev) => setLength(ev.target.value)}
-					/>
+				<div className="lg:w-1/2 sm:w-full">
+					<div className=" ">
+						{dimensions? dimensions.map((element,index) => (
+							
+							<div key={index} className="flex flex-row m-5  justify-between " > 
+					
+								<p>{element.join("/")}</p>
+								<button onClick={(e) => removeDimension(e, index)} className="bg-gray-500 hover:bg-gray-700 text-white py-1 px-2 rounded">
+									DELETE
+								</button>
+						
+							</div>
+						)):<></>}
+					</div>
+					<div className="flex flex-row m-5  justify-between">
+						<div className="flex flex-col">
+						<label>Length</label>
+						<input
+							type="number"	
+							placeholder="length"
+							value={length}
+							className=" w-24"
+							onChange={(ev) => setLength(ev.target.value)}
+						/>
+						</div>
 
-					<label>Width</label>
-					<input
-						type="text"
-						placeholder="width,separated by commas"
-						value={width}
-						onChange={(ev) => setWidth(ev.target.value)}
-					/>
+						<div className="flex flex-col">
 
-					<label>Thickness</label>
-					<input
-						type="text"
-						placeholder="thickness,separated by commas"
-						value={thickness}
-						onChange={(ev) => setThickness(ev.target.value)}
-					/>
-				</>
+						<label>Width</label>
+						<input
+							type="number"
+							className=" w-24"
+							placeholder="width"
+							value={width}
+							onChange={(ev) => setWidth(ev.target.value)}
+						/>
+						</div>
+
+						<div className="flex flex-col">
+
+						<label>Thickness</label>
+						<input
+							type="number"
+							className=" w-24"
+							placeholder="thickness"
+							value={thickness}
+							onChange={(ev) => setThickness(ev.target.value)}
+						/>
+						</div>
+						<div class="flex h-10 ">
+						<button
+							className="btn-primary  text-sm p-0"
+							onClick={(e) => addDimension(e, length,width, thickness)}
+						>
+							ADD DIMENSION
+						</button>
+						</div>
+						
+					</div>
+				</div>
 			) : (
-				<>
+				<div className="lg:w-1/2 sm:w-full">
 					<label>Length</label>
 					<div className="flex gap-1">
 						<input
@@ -313,10 +402,14 @@ export default function ProductForm({
 							value={maxThickness}
 						/>
 					</div>
-				</>
+				</div>
 			)}
-			<button type="submit" className="btn-primary">
-				Save
+			<button
+				type="submit"
+				className="btn-primary text-lg mt-10"
+				onClick={saveProduct}
+			>
+				SAVE
 			</button>
 		</form>
 	);

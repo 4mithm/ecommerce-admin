@@ -13,9 +13,9 @@ export default async function handle(req, res) {
   }
 
   if (method === 'POST') {
-    const {name} = req.body;
+    const {name,type} = req.body;
     const SpeciesDoc = await Species.create({
-      name
+      name,type
     });
     res.json(SpeciesDoc);
   }

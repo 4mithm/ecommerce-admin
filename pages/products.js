@@ -12,8 +12,8 @@ export default function Products() {
   }, []);
   return (
     <Layout>
-      <Link className="btn-primary" href={'/products/new'}>Add new product</Link>
-      <table className="basic mt-2">
+      <Link className="btn-primary " href={'/products/new'}><span className="text-lg p-10">Add new product</span></Link>
+      <table className="basic mt-10">
         <thead>
           <tr>
             <td>Product name</td>
@@ -23,7 +23,7 @@ export default function Products() {
         <tbody>
           {products.map(product => (
             <tr key={product._id}>
-              <td>{product.title}</td>
+              <td>{product.species}</td>
               <td>
                 <Link className="btn-default" href={'/products/edit/'+product._id}>
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
